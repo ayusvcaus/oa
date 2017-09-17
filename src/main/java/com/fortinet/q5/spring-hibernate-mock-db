@@ -1,0 +1,96 @@
+
+
+Not sure 100% if we can't mock DB with hibernate, however, the job appears not easy at least since we can't do mocking below with hibernate
+
+ @InjectMocks 
+ private DBConnection dbConnection;
+ @Mock 
+ private Connection mockConnection;
+ @Mock 
+ private Statement mockStatement;
+ 
+ Per the example on the link below
+ https://www.boraji.com/spring-4-hibernate-5-integration-example-with-zero-xml
+ 
+ There are 2 solutions:
+
+1) Mock on Dao layers:
+ ......
+ 
+@InjectMocks
+UserService userService
+
+@Mock
+ private UserDao userDao;
+ 
+......
+ 
+ MockitoAnnotations.initMocks(this);
+
+......
+
+ User u1 = new User("abc", "xyz", "ax@yahoo.com");
+ User u2 = new User("ijk", "rst", "ir@yahoo.com");
+ 
+ List<User> expectedUsers = new ArrayList<User>();
+ users.add(u1);
+ users.add(u2);
+ 
+doNothing().when(userDao).add(u1);
+doNothing().when(userDao).add(u2);
+
+List<User> actualUsers = userService.listUsers();
+
+assertArrayEquals(expectedUsers.toArray(new User[expectedUsers.size()], actualUsers.toArray(new User[actualUsers.size()]);
+
+......
+
+2) Make use of Spring test framework when a DB connection is already configured:
+
+import org.junit.runner.RunWith;
+import static org.junit.Assert.assertEquals;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.Rollback;
+import org.springframework.transaction.annotation.Transactional;
+
+@ContextConfiguration(locations = "classpath:applicationContext-test.xml")
+@RunWith(SpringJUnit4ClassRunner.class)
+public class UserDaoTest{
+
+    @Autowired
+    private UserDao userDao;
+
+    @Test
+    @Transactional
+    @Rollback(true)
+    public void testAddUser()
+    {
+        User u1 = new User("abc", "xyz", "ax@yahoo.com");
+        User u2 = new User("ijk", "rst", "ir@yahoo.com");
+        List<User> expectedUsers = new ArrayList<User>();
+        users.add(u1);
+        users.add(u2);
+        
+        userDao.add(u1);
+        userDao.add(u2)
+         
+        List<User> actualUsers = userDao.listUsers();
+        assertArrayEquals(expectedUsers.toArray(new User[expectedUsers.size()], actualUsers.toArray(new User[actualUsers.size()]);
+    }
+ }
+ 
+ with applicationContext-test.xml:
+ <beans ...... >  
+    <context:component-scan base-package="......" />
+    <bean id="entityManagerFactoryBean" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+      ......
+    </bean> 
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+     ......
+    </bean>      
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+     ......
+    </bean>
+    <tx:annotation-driven />    
+</beans>
